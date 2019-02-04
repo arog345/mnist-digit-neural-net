@@ -12,13 +12,14 @@ def getImages():
     return im2d
 
 class neuralNet: #assuming no hidden layer
-    def __init__(self,inputs,outputs,layers):
+    def __init__(self,inputs,outputs,hiddenLayers):
         np.random.seed(1)
         self.input = inputs.astype(float)
         self.output = outputs
-        self.layers = layers
-        for i in range(self.layers): #needs to be mre robust for additional layerss
-            self.weights = self.getWeights()
+        self.hiddenLayers = hiddenLayers
+        self.weights = [[]*hiddenLayers[:,0]] #list of lists to store all the weights
+        for i in range(self.hiddenLayers.shape[0]): #loop through all layers and assign weights
+            self.weights[i] = self.getWeights()
         
     
     #function to define weights
@@ -32,16 +33,19 @@ class neuralNet: #assuming no hidden layer
         return 1/(1+np.exp(-x))
     
     #calculate prediction - need to include layers, missing for loop
-    def predict(self):
-        expectedOutput = np.dot(self.input,self.weights)
+    def predict(self,currentWeights):
+        expectedOutput = np.dot(self.input,currentWeights)
         return self.sigmoid(expectedOutput)
     
     def train(self,iterations):
         for i in range(iterations):
-            currentOutput = self.predict()
-            error = self.output - currentOutput
-            backProp = np.dot(self.input.T,error*self.sigmoid(currentOutput,deriv=True))
-            self.weights += backProp
+            for j in range(self.hiddenLayers.shape[0]):
+                currentOutput = self.predict(self.weights[j])
+                error = self.output - currentOutput
+                #this should be broken up into a different loop
+                backProp = np.dot(self.input.T,error*self.sigmoid(currentOutput,deriv=True))
+                self.weights[j] += backProp
+                
     def evaluate(self,input):
         output = np.dot(input,self.weights)
         return self.sigmoid(output)
@@ -49,15 +53,22 @@ class neuralNet: #assuming no hidden layer
 if __name__ == "__main__":
     #inputFig = getImages()
     
-    #dummy test, output is equal to first element of the inputs ith row
+    #sample training set, output is equal to first element of the inputs ith row
     x = np.array([[0,0,0],
               [0,1,0],
               [0,0,1],
               [1,1,1],
               [1,0,0]])
     y = np.array([[0,0,0,1,1]]).T
+    
+    #specify numbers of layers
+    layers = 1
+    layerID = [x for x in range(layers)] #provide a layer number
+    numberNodes = np.array([y.shape[1]]) #how many nodes are in a layer, last layer is output
+    hiddenLayers = np.hstack([(layerID,numberNodes)]).T #bring together - actually not needed since number of rows is number of layers, keeping anyway
     iterations = 10000
-    net = neuralNet(x,y,1)
+    net = neuralNet(x,y,hiddenLayers)
+    
     print(net.weights)
     net.train(iterations)
     print("--------")
