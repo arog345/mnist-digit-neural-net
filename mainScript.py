@@ -17,14 +17,17 @@ class neuralNet: #assuming no hidden layer
         self.input = inputs.astype(float)
         self.output = outputs
         self.hiddenLayers = hiddenLayers
-        self.weights = [[]*hiddenLayers[:,0]] #list of lists to store all the weights
+        self.weights = [] #list of lists to store all the weights
+        row = self.input.shape[1]
         for i in range(self.hiddenLayers.shape[0]): #loop through all layers and assign weights
-            self.weights[i] = self.getWeights()
+            col = self.hiddenLayers[i,1]
+            self.weights.append(self.getWeights(row,col))
+            row = col
         
     
     #function to define weights
-    def getWeights(self):
-        return 2*np.random.rand(self.input.shape[1],1) - 1
+    def getWeights(self,x,y):
+        return 2*np.random.rand(x,y) - 1
     
     #activation function    
     def sigmoid(self,x,deriv=False):
@@ -41,40 +44,49 @@ class neuralNet: #assuming no hidden layer
         sigma = self.sigmoid(z)
         return sigma
         
-    def forwardProp(self):
+    def forwardProp(self,currentInput,currentOutput):
         z = []
-        sigma = [self.input]
+        sigma = [currentInput.reshape((1,currentInput.shape[0]))]
         for j in range(self.hiddenLayers.shape[0]):
-            #because sigmoid, output is going to be between 0 and 1, must scale outputs accordingly
             z.append(self.linearPredict(sigma[j],self.weights[j]))
-            sigma.append(self.activation(z[j]))
-        #this is more like the derivative of the error function
-        error = self.output - sigma[-1] #last sigma should be the last output
+            sigma.append(np.array(self.activation(z[j])))
+        #derivative of the error function
+        error = currentOutput.reshape(1,currentOutput.shape[0]) - sigma[-1] #last sigma should be the last output
         return (z,sigma,error)
     
     def backwardProp(self,z,sigma,error):
         #first iteration - coming from back to front
-        endDerivative = error*self.sigmoid(sigma[-1],True)
-        backProp = np.dot(sigma[-2].T,endDerivative)
-        self.weights[-1] += backProp
+        auxWeight = self.weights[-1]
+        endDerivative = np.dot(error,self.sigmoid(sigma[-1],True))
+        backProp = np.dot(endDerivative,sigma[-2])
+        self.weights[-1] += backProp.T #last weight
         memoization = endDerivative
-        #looping through
-        for i in range(self.hiddenLayers.shape[0]-2,0,-1):
-            intermediateCalc = self.weights[i+1]*self.sigmoid(sigma[i],True)
+        #looping through, need to start 1 index later since initialized
+        for i in range(self.hiddenLayers.shape[0]-1-1,0,-1):
+            intermediateCalc = auxWeight*self.sigmoid(sigma[i+1],True)
             memoization= memoization * intermediateCalc
-            backProp = np.dot(sigma[i].T, #this could be wrong!
+            backProp = np.dot(sigma[i-1], 
                               backProp*memoization)
+            auxWeight = self.weights[i]
             self.weights[i] += backProp
             
                 
     def train(self,iterations):
         for i in range(iterations):
-            (z,sigma,error) = self.forwardProp()
-            self.backwardProp(z,sigma,error)
+            #two types of ways to train (i) batch or (ii) iterative?
+            #choosing iterative because I think it has some benefits
+            for j in range(self.input.shape[0]):
+                (z,sigma,error) = self.forwardProp(self.input[j],self.output[j])
+                self.backwardProp(z,sigma,error)
                 
-    def evaluate(self,input):
-        output = np.dot(input,self.weights)
-        return self.sigmoid(output)
+    def evaluate(self,userIn):
+        #because sigmoid, output is going to be between 0 and 1, 
+        #must scale outputs accordingly
+        sigma = userIn
+        for j in range(self.hiddenLayers.shape[0]):
+            z = self.linearPredict(sigma,self.weights[j])
+            sigma = self.activation(z)
+        return sigma
     
 if __name__ == "__main__":
     #inputFig = getImages()
@@ -88,9 +100,9 @@ if __name__ == "__main__":
     y = np.array([[0,0,0,1,1]]).T
     
     #specify numbers of layers
-    layers = 2
+    layers = 3
     layerID = [x for x in range(layers)] #provide a layer number
-    numberNodes = np.array([y.shape[1]]) #how many nodes are in a layer, last layer is output
+    numberNodes = np.array([4,3,y.shape[1]]) #how many nodes are in a layer, last layer is output
     hiddenLayers = np.hstack([(layerID,numberNodes)]).T #bring together - actually not needed since number of rows is number of layers, keeping anyway
     iterations = 10000
     net = neuralNet(x,y,hiddenLayers)
