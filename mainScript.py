@@ -1,9 +1,10 @@
-import matplotlib.pyplot as plt
+from PIL import Image
 
-#read the image in
-im3d=plt.imread('imgBW.png')
+# read the image in
+image = Image.open("earth_color.png")
+image_grey = image.convert("L")
+image_blackwhite = image_grey.point(lambda x: 0 if x < 128 else 255, "1")
 
-#convert the image to a 2d image with averaged values, assumes image will be
-#black and white, otherwise this step is not necessary
-im2d = (im3d[:,:,0] + im3d[:,:,1] + im3d[:,:,2])/3
+processed_image = image_blackwhite.resize((200, 200))
 
+processed_image.show()
