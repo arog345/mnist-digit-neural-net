@@ -33,18 +33,44 @@ class neuralNet: #assuming no hidden layer
         return 1/(1+np.exp(-x))
     
     #calculate prediction - need to include layers, missing for loop
-    def predict(self,currentWeights):
-        expectedOutput = np.dot(self.input,currentWeights)
-        return self.sigmoid(expectedOutput)
+    def linearPredict(self,z,currentWeights):
+        z = np.dot(z,currentWeights)
+        return z
     
+    def activation(self,z):
+        sigma = self.sigmoid(z)
+        return sigma
+        
+    def forwardProp(self):
+        z = []
+        sigma = [self.input]
+        for j in range(self.hiddenLayers.shape[0]):
+            #because sigmoid, output is going to be between 0 and 1, must scale outputs accordingly
+            z.append(self.linearPredict(sigma[j],self.weights[j]))
+            sigma.append(self.activation(z[j]))
+        #this is more like the derivative of the error function
+        error = self.output - sigma[-1] #last sigma should be the last output
+        return (z,sigma,error)
+    
+    def backwardProp(self,z,sigma,error):
+        #first iteration - coming from back to front
+        endDerivative = error*self.sigmoid(sigma[-1],True)
+        backProp = np.dot(sigma[-2].T,endDerivative)
+        self.weights[-1] += backProp
+        memoization = endDerivative
+        #looping through
+        for i in range(self.hiddenLayers.shape[0]-2,0,-1):
+            intermediateCalc = self.weights[i+1]*self.sigmoid(sigma[i],True)
+            memoization= memoization * intermediateCalc
+            backProp = np.dot(sigma[i].T, #this could be wrong!
+                              backProp*memoization)
+            self.weights[i] += backProp
+            
+                
     def train(self,iterations):
         for i in range(iterations):
-            for j in range(self.hiddenLayers.shape[0]):
-                currentOutput = self.predict(self.weights[j])
-                error = self.output - currentOutput
-                #this should be broken up into a different loop
-                backProp = np.dot(self.input.T,error*self.sigmoid(currentOutput,deriv=True))
-                self.weights[j] += backProp
+            (z,sigma,error) = self.forwardProp()
+            self.backwardProp(z,sigma,error)
                 
     def evaluate(self,input):
         output = np.dot(input,self.weights)
@@ -62,7 +88,7 @@ if __name__ == "__main__":
     y = np.array([[0,0,0,1,1]]).T
     
     #specify numbers of layers
-    layers = 1
+    layers = 2
     layerID = [x for x in range(layers)] #provide a layer number
     numberNodes = np.array([y.shape[1]]) #how many nodes are in a layer, last layer is output
     hiddenLayers = np.hstack([(layerID,numberNodes)]).T #bring together - actually not needed since number of rows is number of layers, keeping anyway
@@ -76,3 +102,4 @@ if __name__ == "__main__":
     testInput = np.array([[1,0,1]])
     print("--------")
     print(net.evaluate(testInput))
+    
