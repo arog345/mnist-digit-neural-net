@@ -1,6 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
+from PIL import Image
 
+import MNISTDataLoader
+
+TRAINING_IMAGES = Path('data/train-images-idx3-ubyte.gz')
+TRAINING_LABELS = Path('data/train-labels-idx1-ubyte.gz')
+TEST_IMAGES = Path('data/t10k-images-idx3-ubyte.gz')
+TEST_LABELS = Path('data/t10k-labels-idx1-ubyte.gz')
 
 def getImages():
     #read the image in
@@ -90,7 +98,14 @@ class neuralNet: #assuming no hidden layer
     
 if __name__ == "__main__":
     #inputFig = getImages()
-    
+
+    mnistData = MNISTDataLoader.MNISTDataLoader([TRAINING_IMAGES, TRAINING_LABELS, TEST_IMAGES, TEST_LABELS])
+
+    print(mnistData.testData[0])
+
+    image = Image.fromarray(mnistData.testData[0][0])
+    image.show()
+
     #sample training set, output is equal to first element of the inputs ith row
     x = np.array([[0,0,0],
               [0,1,0],
