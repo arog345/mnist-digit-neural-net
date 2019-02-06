@@ -12,11 +12,12 @@ def getImages():
     return im2d
 
 class neuralNet: #assuming no hidden layer
-    def __init__(self,inputs,outputs,hiddenLayers):
+    def __init__(self,inputs,outputs,hiddenLayers,learningRate):
         np.random.seed(1)
         self.input = inputs.astype(float)
         self.output = outputs
         self.hiddenLayers = hiddenLayers
+        self.learningRate = learningRate
         self.weights = [] #list of lists to store all the weights
         row = self.input.shape[1]
         for i in range(self.hiddenLayers.shape[0]): #loop through all layers and assign weights
@@ -57,18 +58,17 @@ class neuralNet: #assuming no hidden layer
     def backwardProp(self,z,sigma,error):
         #first iteration - coming from back to front
         auxWeight = self.weights[-1]
-        endDerivative = np.dot(error,self.sigmoid(sigma[-1],True))
+        endDerivative = np.dot(error.T,self.sigmoid(z[-1],True).T)
         backProp = np.dot(endDerivative,sigma[-2])
         self.weights[-1] += backProp.T #last weight
         memoization = endDerivative
         #looping through, need to start 1 index later since initialized
-        for i in range(self.hiddenLayers.shape[0]-1-1,0,-1):
-            intermediateCalc = auxWeight*self.sigmoid(sigma[i+1],True)
-            memoization= memoization * intermediateCalc
-            backProp = np.dot(sigma[i-1], 
-                              backProp*memoization)
+        for i in range(self.hiddenLayers.shape[0]-1-1,-1,-1):
+            hiddenDerivative = np.dot(auxWeight.T,self.sigmoid(z[i],True).T)
+            memoization= memoization * hiddenDerivative
+            backProp = np.dot(sigma[i].T,memoization.T)
             auxWeight = self.weights[i]
-            self.weights[i] += backProp
+            self.weights[i] += backProp*self.learningRate
             
                 
     def train(self,iterations):
@@ -104,8 +104,9 @@ if __name__ == "__main__":
     layerID = [x for x in range(layers)] #provide a layer number
     numberNodes = np.array([4,3,y.shape[1]]) #how many nodes are in a layer, last layer is output
     hiddenLayers = np.hstack([(layerID,numberNodes)]).T #bring together - actually not needed since number of rows is number of layers, keeping anyway
+    learningRate = 0.01
     iterations = 10000
-    net = neuralNet(x,y,hiddenLayers)
+    net = neuralNet(x,y,hiddenLayers,learningRate)
     
     print(net.weights)
     net.train(iterations)
