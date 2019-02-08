@@ -26,6 +26,7 @@ class NeuralNet:
 
     # Feed-forward algo for NN
     def feedForward(self, x):
+        # TODO: maybe have a flag to return all the intermediate values to for the back prop algo to use?
         a = np.copy(x)
 
         for i, theta in enumerate(self.__thetaMatrices):
