@@ -52,6 +52,7 @@ class neuralNet: #assuming no hidden layer
             z.append(self.linearPredict(sigma[j],self.weights[j]))
             sigma.append(np.array(self.activation(z[j])))
         #derivative of the error function
+        #May need a minus sign!
         error = currentOutput.reshape(1,currentOutput.shape[0]) - sigma[-1] #last sigma should be the last output
         return (z,sigma,error)
     
@@ -59,7 +60,10 @@ class neuralNet: #assuming no hidden layer
         delta = self.getDelta(sigma,error)
         
         #for loop to propagate the error
-        #for loop for all layers
+        for i in range(self.hiddenLayers.shape[0]):
+            for k in range(len(self.weights[i][:,0])):
+                for j in range(len(self.weights[i][0])):
+                    self.weights[i][k,j] += self.learningRate*delta[i][j][0]*self.sigmoid(sigma[i][0][k],True) 
         #for loop for all weights in layer
         return delta
             
@@ -70,19 +74,22 @@ class neuralNet: #assuming no hidden layer
         #delta list with number of output nodes
         delta.insert(0,np.empty((self.hiddenLayers[-1,1],1))) 
         for i in range(self.hiddenLayers[-1,-1]):
-            delta[0][i] = error[i]*sigma[-1][i]
+            delta[0][i] = error[i]*self.sigmoid(sigma[-1][i],True)
         
         #have all of the deltas with output layer
         #get delta for the rest of the layers
+        sigmaLen = len(sigma[1:])-1
         for i in range(self.hiddenLayers[-2,0],-1,-1):
             #number of nodes in current layer
-            intermediateDelta = np.empty((self.hiddenLayers[-2-i,1],1))
+            intermediateDelta = np.empty((self.hiddenLayers[i,1],1))
             for j in range(intermediateDelta.shape[0]):
-                intermediateDelta[j] = np.dot(delta[i][0],self.weights[i+1][j])
+                intermediateDelta[j] = \
+                np.dot(delta[-i].T,np.array([self.weights[i+1][j]]).T)\
+                *self.sigmoid(sigma[-1-(sigmaLen-i)][0][j],True)
             delta.insert(0,intermediateDelta)
             
         return delta
-        
+
     def train(self,iterations):
         for i in range(iterations):
             #two types of ways to train (i) batch or (ii) iterative?
@@ -112,12 +119,12 @@ if __name__ == "__main__":
     y = np.array([[0,0,0,1,1]]).T
     
     #specify numbers of layers
-    layers = 2
+    layers = 3
     layerID = [x for x in range(layers)] #provide a layer number
-    numberNodes = np.array([5,y.shape[1]]) #how many nodes are in a layer, last layer is output
+    numberNodes = np.array([5,3,y.shape[1]]) #how many nodes are in a layer, last layer is output
     hiddenLayers = np.hstack([(layerID,numberNodes)]).T #bring together - actually not needed since number of rows is number of layers, keeping anyway
     learningRate = 0.01
-    iterations = 10000
+    iterations = 1000
     net = neuralNet(x,y,hiddenLayers,learningRate)
     
     print(net.weights)
