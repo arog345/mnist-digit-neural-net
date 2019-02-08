@@ -5,6 +5,7 @@ class NeuralNet:
     def __init__(self, layerSizes):
         if len(layerSizes) < 2:
             raise Exception("Must specify at least the input and output layer sizes")
+
         self.depth = len(layerSizes) - 1
 
         self.__thetaMatrices = []
@@ -19,21 +20,36 @@ class NeuralNet:
 
             self.__thetaMatrices.append(theta)
 
-    # Feed-forward algo for NN
     def predict(self, x):
+        h = self.feedForward(x)
+        return max([(x, i) for i, x in enumerate(h)])
+
+    # Feed-forward algo for NN
+    def feedForward(self, x):
         a = np.copy(x)
 
         for i, theta in enumerate(self.__thetaMatrices):
             if not self.__isLastLayerIndex(i):
-                a = np.append(a, 1)
+                a = np.append(a, np.ones([a.shape[0], 1]), 1)
 
-            z = np.matmul(theta, a)
+            z = np.matmul(a, theta.T)
             a = self.__sigmoid(z)
 
-        return max([(x, i) for i, x in enumerate(a)])
+        return a
 
-    def train(self, numIterations, trainingData):
+    def train(self, numIterations, trainingData, learningRate):
+        """
+        Trains the NN using the given training data. 
+        The training data array elements should be tuples of the form (input, label).
+        """
         # TODO: everything
+        inputData = np.row_stack(tuple(i for i, _ in trainingData))
+        labelData = np.row_stack(tuple(l for _, l in trainingData))
+
+        print(inputData)
+        outputs = self.feedForward(inputData)
+        print(outputs)
+        print(labelData)
         pass
 
     # Elementwise sigmoid function
@@ -49,6 +65,14 @@ if __name__ == "__main__":
 
     nn = NeuralNet(layerSizes)
 
-    inVector = np.array([[1, 1, 1, 1]], dtype="float")
-    outVector = nn.predict(inVector)
-    print(outVector)
+    nn.train(
+        1000,
+        [
+            (np.array([1, 1, 0, 0], dtype="float"), [0, 1]),
+            (np.array([1, 0, 0, 0], dtype="float"), [0, 1]),
+            (np.array([0, 1, 0, 0], dtype="float"), [0, 1]),
+            (np.array([0, 0, 1, 1], dtype="float"), [1, 0]),
+            (np.array([0, 0, 1, 0], dtype="float"), [1, 0]),
+            (np.array([0, 0, 0, 1], dtype="float"), [1, 0]),
+        ],
+    )
