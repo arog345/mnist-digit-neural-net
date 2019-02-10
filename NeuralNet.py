@@ -28,13 +28,8 @@ def main():
     np.set_printoptions(threshold=50)
 
     nn = NeuralNet(layerSizes)
-    nn.train(
-        numIterations,
-        learningRate,
-        dataLoader.trainingData[
-            0:50
-        ],  # For now, pass in a slice of it so that it runs faster.
-    )
+    # For now, pass in a slice of it so that it runs faster.
+    nn.train(numIterations, learningRate, dataLoader.trainingData[0:50])
 
 
 class NeuralNet:
