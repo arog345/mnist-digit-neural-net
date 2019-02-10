@@ -1,4 +1,40 @@
 import numpy as np
+from pathlib import Path
+from collections.abc import Iterable
+
+from MNISTDataLoader import MNISTDataLoader
+
+TRAINING_IMAGES = Path("data/train-images-idx3-ubyte.gz")
+TRAINING_LABELS = Path("data/train-labels-idx1-ubyte.gz")
+TEST_IMAGES = Path("data/t10k-images-idx3-ubyte.gz")
+TEST_LABELS = Path("data/t10k-labels-idx1-ubyte.gz")
+MNIST_PATHS = [TRAINING_IMAGES, TRAINING_LABELS, TEST_IMAGES, TEST_LABELS]
+
+
+def main():
+    dataLoader = MNISTDataLoader(MNIST_PATHS)
+
+    x, y, label = dataLoader.trainingData[0]
+
+    print("Example of loaded data:")
+    printWithLabel("x.T", x.T)
+    printWithLabel("yVector", y)
+    printWithLabel("y", label)
+
+    layerSizes = [dataLoader.inputSize, dataLoader.inputSize, dataLoader.outputSize]
+    learningRate = 0.1
+    numIterations = 1000
+
+    np.set_printoptions(threshold=50)
+
+    nn = NeuralNet(layerSizes)
+    nn.train(
+        numIterations,
+        learningRate,
+        dataLoader.trainingData[
+            0:50
+        ],  # For now, pass in a slice of it so that it runs faster.
+    )
 
 
 class NeuralNet:
@@ -6,74 +42,75 @@ class NeuralNet:
         if len(layerSizes) < 2:
             raise Exception("Must specify at least the input and output layer sizes")
 
-        self.depth = len(layerSizes) - 1
+        self.depth = len(layerSizes)
 
-        self.__thetaMatrices = []
-        for i in range(self.depth):
-            rows = layerSizes[i + 1]
-            cols = layerSizes[i]
-            theta = np.random.rand(rows, cols)
-
-            # Hidden layers have a constant entry added to them (for bias?)
-            if not self.__isLastLayerIndex(i):
-                theta = np.column_stack((theta, np.ones((rows, 1))))
-
-            self.__thetaMatrices.append(theta)
-
-    def predict(self, x):
-        h = self.feedForward(x)
-        return max([(x, i) for i, x in enumerate(h)])
+        # No bias for the input layer
+        self.__biasMatrices = [np.random.randn(rows, 1) for rows in layerSizes[1:]]
+        self.__thetaMatrices = [
+            np.random.randn(rows, cols)
+            for (rows, cols) in zip(layerSizes[1:], layerSizes[:-1])
+        ]
 
     # Feed-forward algo for NN
-    def feedForward(self, x):
-        # TODO: maybe have a flag to return all the intermediate values to for the back prop algo to use?
-        a = np.copy(x)
+    def feedForward(self, x, returnHiddenLayerValues=False):
+        a = x
 
-        for i, theta in enumerate(self.__thetaMatrices):
-            if not self.__isLastLayerIndex(i):
-                a = np.append(a, np.ones([a.shape[0], 1]), 1)
+        # The z and a values for the hidden and ouput layers
+        zValues = []
+        aValues = []
 
-            z = np.matmul(a, theta.T)
-            a = self.__sigmoid(z)
+        # Run the input through the network
+        for theta, b in zip(self.__thetaMatrices, self.__biasMatrices):
+            z = np.matmul(theta, a) + b
+            a = sigmoid(z)
 
-        return a
+            if returnHiddenLayerValues:
+                zValues.append(z)
+                aValues.append(a)
 
-    def train(self, numIterations, trainingData, learningRate):
+        if returnHiddenLayerValues:
+            return (a, zValues, aValues)
+        else:
+            return a
+
+    def train(self, numIterations, learningRate, trainingData):
         """
         Trains the NN using the given training data. 
-        The training data array elements should be tuples of the form (input, label).
+        The training data array elements should be tuples of the form (inputVector, outputVector, label).
         """
-        # TODO: everything
-        inputData = np.row_stack(tuple(i for i, _ in trainingData))
-        labelData = np.row_stack(tuple(l for _, l in trainingData))
 
-        print(inputData)
-        outputs = self.feedForward(inputData)
-        print(outputs)
-        print(labelData)
-        pass
+        a, zValues, aValues = self.feedForward(trainingData[0][0], True)
 
-    # Elementwise sigmoid function
-    def __sigmoid(self, vector):
-        return 1 / (np.exp(vector) + 1)
+        print("NeuralNet.feedForward return values:")
+        printWithLabel("a", a)
+        printWithLabel("zValues", zValues)
+        printWithLabel("aValues", aValues)
 
-    def __isLastLayerIndex(self, i):
-        return i + 1 == self.depth
+
+# Elementwise sigmoid function
+def sigmoid(vector):
+    return 1 / (np.exp(vector) + 1)
+
+
+# Elementwise sigmoid derivative function
+def sigmoidDeriv(vector):
+    sig = sigmoid(vector)
+    return sig * (1 - sig)
+
+
+def printWithLabel(label, val):
+    print(label)
+    printList(val)
+    print()
+
+
+def printList(l):
+    if isinstance(l, Iterable) and not isinstance(l, np.ndarray):
+        for a in l:
+            print(a)
+    else:
+        print(l)
 
 
 if __name__ == "__main__":
-    layerSizes = [4, 3, 4, 2]
-
-    nn = NeuralNet(layerSizes)
-
-    nn.train(
-        1000,
-        [
-            (np.array([1, 1, 0, 0], dtype="float"), [0, 1]),
-            (np.array([1, 0, 0, 0], dtype="float"), [0, 1]),
-            (np.array([0, 1, 0, 0], dtype="float"), [0, 1]),
-            (np.array([0, 0, 1, 1], dtype="float"), [1, 0]),
-            (np.array([0, 0, 1, 0], dtype="float"), [1, 0]),
-            (np.array([0, 0, 0, 1], dtype="float"), [1, 0]),
-        ],
-    )
+    main()
